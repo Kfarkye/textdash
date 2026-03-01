@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import PostalMime from "postal-mime";
 import { supabase } from "./supabase";
 
 type Message = {
@@ -59,6 +60,7 @@ export default function App() {
   const [commentId, setCommentId] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const fetchMessages = useCallback(async () => {
     const { data, error } = await supabase
@@ -115,6 +117,59 @@ export default function App() {
     }
   });
 
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.eml'));
+    if (files.length === 0) return showToast("No .eml files found");
+
+    showToast(`Parsing ${files.length} email(s)...`);
+
+    let processed = 0;
+    for (const file of files) {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const parser = new PostalMime();
+        const email = await parser.parse(arrayBuffer as ArrayBuffer);
+
+        let phone = null;
+        const phoneMatch = email.subject?.match(/(?:\+?1[ -]?)?\(?([0-9]{3})\)?[ -]?([0-9]{3})[ -]?([0-9]{4})/) ||
+          email.from?.address?.match(/(?:\+?1[ -]?)?\(?([0-9]{3})\)?[ -]?([0-9]{3})[ -]?([0-9]{4})/);
+
+        if (phoneMatch) {
+          phone = phoneMatch[0];
+        }
+
+        let content = email.text || email.html?.replace(/<[^>]*>?/gm, '') || "No content extracted";
+
+        const lines = content.split('\n').filter(l => l.trim().length > 0);
+        let actualMessage = lines.join('\n');
+
+        if (lines.length > 2) {
+          actualMessage = lines.filter(l => !l.includes('ringcentral.com') && !l.includes('Text message from')).join('\n').trim();
+        }
+
+        const hasAttachment = (email.attachments && email.attachments.length > 0) ? true : false;
+
+        await supabase.from('clinician_messages').insert({
+          clinician_name: phone ? "Unknown Clinician" : "Unknown Sender",
+          message_content: actualMessage.substring(0, 1000), // Max 1000 chars
+          has_attachment: hasAttachment,
+          phone_number: phone,
+          status: "unread"
+        });
+
+        processed++;
+      } catch (err) {
+        console.error("Failed to parse EML:", err);
+      }
+    }
+
+    showToast(`Successfully imported ${processed} message(s)`);
+    fetchMessages();
+  };
+
   const counts = {
     send: messages.filter(m => m.status === "unread" && m.draft_reply).length,
     edit: messages.filter(m => (m.status === "unread" && !m.draft_reply) || m.status === "awaiting_response").length,
@@ -132,7 +187,17 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <div
+      className="app"
+      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+      onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+      onDrop={handleDrop}
+    >
+      {isDragging && (
+        <div className="drag-overlay">
+          <p>Drop .eml files here to ingest message</p>
+        </div>
+      )}
       {toast && <div className="toast">{toast}</div>}
 
       <header className="header">

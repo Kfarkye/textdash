@@ -13,6 +13,7 @@
     "@fontsource/geist-mono": "^5.2.7",
     "@fontsource/geist-sans": "^5.2.5",
     "@supabase/supabase-js": "^2.98.0",
+    "postal-mime": "^2.7.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
