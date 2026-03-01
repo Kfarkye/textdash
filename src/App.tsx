@@ -151,9 +151,9 @@ export default function App() {
             onClick={() => setTab(t)}
           >
             <span className="tab-label">
-              {t === "send" ? "Ready" :
-                t === "edit" ? "Review" :
-                  t === "questions" ? "Stalled" : "All"}
+              {t === "send" ? "Ready to Send" :
+                t === "edit" ? "Needs Edit" :
+                  t === "questions" ? "Need Info" : "All Messages"}
             </span>
             <span className="tab-count">
               {counts[t]}
@@ -188,14 +188,14 @@ export default function App() {
 
             <div className="card-body">
               <div className="message-bubble inbound">
-                <p className="bubble-label">Incoming</p>
+                <p className="bubble-label">Their message</p>
                 <p>{m.message_content}</p>
-                {m.has_attachment && <span className="attachment-tag">Attachment Present</span>}
+                {m.has_attachment && <span className="attachment-tag">📎 Attachment</span>}
               </div>
 
               {m.draft_reply && editingId !== m.id && (
                 <div className="message-bubble outbound">
-                  <p className="bubble-label">Drafted Payload</p>
+                  <p className="bubble-label">Your draft reply</p>
                   <p>{m.draft_reply}</p>
                 </div>
               )}
@@ -207,10 +207,10 @@ export default function App() {
                     value={editDraft}
                     onChange={(e) => setEditDraft(e.target.value)}
                     rows={4}
-                    placeholder="Refine draft payload..."
+                    placeholder="Edit your reply..."
                   />
                   <div className="edit-actions">
-                    <button className="btn btn-primary" onClick={() => saveDraft(m.id)}>Save changes</button>
+                    <button className="btn btn-primary" onClick={() => saveDraft(m.id)}>Save Draft</button>
                     <button className="btn btn-ghost" onClick={() => { setEditingId(null); setEditDraft(""); }}>Cancel</button>
                   </div>
                 </div>
@@ -223,10 +223,10 @@ export default function App() {
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     rows={3}
-                    placeholder="Add internal trace..."
+                    placeholder="Add your note or comment..."
                   />
                   <div className="edit-actions">
-                    <button className="btn btn-primary" onClick={() => saveComment(m.id)}>Append</button>
+                    <button className="btn btn-primary" onClick={() => saveComment(m.id)}>Add Note</button>
                     <button className="btn btn-ghost" onClick={() => { setCommentId(null); setComment(""); }}>Cancel</button>
                   </div>
                 </div>
@@ -240,26 +240,26 @@ export default function App() {
                     setEditingId(m.id);
                     setEditDraft(m.draft_reply ?? "");
                     setCommentId(null);
-                  }}>Modify</button>
+                  }}>✏️ Edit Reply</button>
                 )}
                 {commentId !== m.id && editingId !== m.id && (
                   <button className="btn btn-outline" onClick={() => {
                     setCommentId(m.id);
                     setComment("");
                     setEditingId(null);
-                  }}>Annotate</button>
+                  }}>💬 Add Note</button>
                 )}
               </div>
 
               <div className="status-actions">
                 {m.status !== "sent" && m.draft_reply && (
-                  <button className="btn btn-primary" onClick={() => updateStatus(m.id, "sent")}>Push to Sender</button>
+                  <button className="btn btn-primary" onClick={() => updateStatus(m.id, "sent")}>✅ Mark Sent</button>
                 )}
                 {m.status !== "needs_info" && (
-                  <button className="btn btn-ghost" onClick={() => updateStatus(m.id, "needs_info")}>Mark Stalled</button>
+                  <button className="btn btn-ghost" onClick={() => updateStatus(m.id, "needs_info")}>❓ Need Info</button>
                 )}
                 {m.status === "needs_info" && (
-                  <button className="btn btn-ghost" onClick={() => updateStatus(m.id, "unread")}>Restore</button>
+                  <button className="btn btn-ghost" onClick={() => updateStatus(m.id, "unread")}>↩ Back to Unread</button>
                 )}
               </div>
             </div>
