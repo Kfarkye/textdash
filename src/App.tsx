@@ -28,25 +28,25 @@ function relativeTime(dateStr: string): string {
   return `${diffD}d ago`;
 }
 
-function statusColor(s: string): string {
+function statusClassName(s: string): string {
   switch (s) {
-    case "unread": return "var(--amber)";
-    case "awaiting_response": return "var(--blue)";
-    case "sent": return "var(--green)";
-    case "needs_info": return "var(--rose)";
-    case "read": return "var(--slate)";
-    default: return "var(--slate)";
+    case "unread": return "status-unread";
+    case "awaiting_response": return "status-awaiting";
+    case "sent": return "status-sent";
+    case "needs_info": return "status-needs-info";
+    case "read": return "status-read";
+    default: return "status-read";
   }
 }
 
 function statusLabel(s: string): string {
   switch (s) {
-    case "unread": return "NEEDS REPLY";
-    case "awaiting_response": return "AWAITING";
-    case "sent": return "SENT";
-    case "needs_info": return "NEEDS INFO";
-    case "read": return "READ";
-    default: return s.toUpperCase();
+    case "unread": return "Needs Reply";
+    case "awaiting_response": return "Awaiting Response";
+    case "sent": return "Sent";
+    case "needs_info": return "Needs Info";
+    case "read": return "Read";
+    default: return s.charAt(0).toUpperCase() + s.slice(1).replace("_", " ");
   }
 }
 
@@ -83,7 +83,7 @@ export default function App() {
 
   const updateStatus = async (id: string, status: string) => {
     await supabase.from("clinician_messages").update({ status }).eq("id", id);
-    showToast(`Status → ${statusLabel(status)}`);
+    showToast(`Status shifted to ${statusLabel(status)}`);
     fetchMessages();
   };
 
@@ -91,18 +91,18 @@ export default function App() {
     await supabase.from("clinician_messages").update({ draft_reply: editDraft }).eq("id", id);
     setEditingId(null);
     setEditDraft("");
-    showToast("Draft saved");
+    showToast("Draft secured");
     fetchMessages();
   };
 
   const saveComment = async (id: string) => {
     const msg = messages.find(m => m.id === id);
     const existing = msg?.message_content ?? "";
-    const updated = existing + "\n\n[KOFI NOTE] " + comment;
+    const updated = existing + "\n\n[ADMIN NOTE] " + comment;
     await supabase.from("clinician_messages").update({ message_content: updated }).eq("id", id);
     setCommentId(null);
     setComment("");
-    showToast("Comment added");
+    showToast("Note appended");
     fetchMessages();
   };
 
@@ -126,7 +126,7 @@ export default function App() {
     return (
       <div className="loader-container">
         <div className="loader" />
-        <p className="loader-text">Loading messages…</p>
+        <p className="loader-text">Loading insights</p>
       </div>
     );
   }
@@ -138,9 +138,9 @@ export default function App() {
       <header className="header">
         <div className="header-left">
           <h1 className="logo">TextDash</h1>
-          <span className="subtitle">Clinician Message Center</span>
+          <span className="subtitle">Clinician communications</span>
         </div>
-        <button className="refresh-btn" onClick={fetchMessages}>↻ Refresh</button>
+        <button className="refresh-btn" onClick={fetchMessages}>Refresh</button>
       </header>
 
       <nav className="tabs">
@@ -151,11 +151,11 @@ export default function App() {
             onClick={() => setTab(t)}
           >
             <span className="tab-label">
-              {t === "send" ? "📤 Ready to Send" :
-                t === "edit" ? "✏️ Needs Edit" :
-                  t === "questions" ? "❓ Need Info" : "📋 All Messages"}
+              {t === "send" ? "Ready" :
+                t === "edit" ? "Review" :
+                  t === "questions" ? "Stalled" : "All"}
             </span>
-            <span className="tab-count" style={{ background: counts[t] > 0 ? statusColor(t === "send" ? "unread" : t === "edit" ? "awaiting_response" : t === "questions" ? "needs_info" : "read") : "var(--surface-3)" }}>
+            <span className="tab-count">
               {counts[t]}
             </span>
           </button>
@@ -165,12 +165,8 @@ export default function App() {
       <main className="messages">
         {filtered.length === 0 && (
           <div className="empty">
-            <p className="empty-icon">{tab === "send" ? "✅" : tab === "questions" ? "🎉" : "📭"}</p>
-            <p className="empty-text">
-              {tab === "send" ? "No messages ready to send" :
-                tab === "questions" ? "No open questions" :
-                  tab === "edit" ? "Nothing needs editing" : "No messages yet"}
-            </p>
+            <p className="empty-icon">⊘</p>
+            <p className="empty-text">No data to display in this view.</p>
           </div>
         )}
 
@@ -183,23 +179,23 @@ export default function App() {
                 {m.phone_number && <span className="phone">{m.phone_number}</span>}
               </div>
               <div className="card-right">
-                <span className="time">{relativeTime(m.received_at)}</span>
-                <span className="status-pill" style={{ background: statusColor(m.status) }}>
+                <span className={`status-pill ${statusClassName(m.status)}`}>
                   {statusLabel(m.status)}
                 </span>
+                <span className="time">{relativeTime(m.received_at)}</span>
               </div>
             </div>
 
             <div className="card-body">
               <div className="message-bubble inbound">
-                <p className="bubble-label">Their message</p>
+                <p className="bubble-label">Incoming</p>
                 <p>{m.message_content}</p>
-                {m.has_attachment && <span className="attachment-tag">📎 Attachment</span>}
+                {m.has_attachment && <span className="attachment-tag">Attachment Present</span>}
               </div>
 
               {m.draft_reply && editingId !== m.id && (
                 <div className="message-bubble outbound">
-                  <p className="bubble-label">Your draft reply</p>
+                  <p className="bubble-label">Drafted Payload</p>
                   <p>{m.draft_reply}</p>
                 </div>
               )}
@@ -211,10 +207,10 @@ export default function App() {
                     value={editDraft}
                     onChange={(e) => setEditDraft(e.target.value)}
                     rows={4}
-                    placeholder="Edit your reply…"
+                    placeholder="Refine draft payload..."
                   />
                   <div className="edit-actions">
-                    <button className="btn btn-primary" onClick={() => saveDraft(m.id)}>💾 Save Draft</button>
+                    <button className="btn btn-primary" onClick={() => saveDraft(m.id)}>Save changes</button>
                     <button className="btn btn-ghost" onClick={() => { setEditingId(null); setEditDraft(""); }}>Cancel</button>
                   </div>
                 </div>
@@ -227,10 +223,10 @@ export default function App() {
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     rows={3}
-                    placeholder="Add your note or comment…"
+                    placeholder="Add internal trace..."
                   />
                   <div className="edit-actions">
-                    <button className="btn btn-primary" onClick={() => saveComment(m.id)}>💬 Add Note</button>
+                    <button className="btn btn-primary" onClick={() => saveComment(m.id)}>Append</button>
                     <button className="btn btn-ghost" onClick={() => { setCommentId(null); setComment(""); }}>Cancel</button>
                   </div>
                 </div>
@@ -238,29 +234,32 @@ export default function App() {
             </div>
 
             <div className="card-actions">
-              {editingId !== m.id && (
-                <button className="btn btn-outline" onClick={() => {
-                  setEditingId(m.id);
-                  setEditDraft(m.draft_reply ?? "");
-                  setCommentId(null);
-                }}>✏️ Edit Reply</button>
-              )}
-              {commentId !== m.id && editingId !== m.id && (
-                <button className="btn btn-outline" onClick={() => {
-                  setCommentId(m.id);
-                  setComment("");
-                  setEditingId(null);
-                }}>💬 Add Note</button>
-              )}
+              <div className="edge-actions">
+                {editingId !== m.id && (
+                  <button className="btn btn-outline" onClick={() => {
+                    setEditingId(m.id);
+                    setEditDraft(m.draft_reply ?? "");
+                    setCommentId(null);
+                  }}>Modify</button>
+                )}
+                {commentId !== m.id && editingId !== m.id && (
+                  <button className="btn btn-outline" onClick={() => {
+                    setCommentId(m.id);
+                    setComment("");
+                    setEditingId(null);
+                  }}>Annotate</button>
+                )}
+              </div>
+
               <div className="status-actions">
                 {m.status !== "sent" && m.draft_reply && (
-                  <button className="btn btn-green" onClick={() => updateStatus(m.id, "sent")}>✅ Mark Sent</button>
+                  <button className="btn btn-primary" onClick={() => updateStatus(m.id, "sent")}>Push to Sender</button>
                 )}
                 {m.status !== "needs_info" && (
-                  <button className="btn btn-rose" onClick={() => updateStatus(m.id, "needs_info")}>❓ Need Info</button>
+                  <button className="btn btn-ghost" onClick={() => updateStatus(m.id, "needs_info")}>Mark Stalled</button>
                 )}
                 {m.status === "needs_info" && (
-                  <button className="btn btn-amber" onClick={() => updateStatus(m.id, "unread")}>↩ Back to Unread</button>
+                  <button className="btn btn-ghost" onClick={() => updateStatus(m.id, "unread")}>Restore</button>
                 )}
               </div>
             </div>
